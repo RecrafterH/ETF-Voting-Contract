@@ -45,8 +45,9 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
     IETFToken etfToken;
     ITokenMarketplace tokenMarketplace;
 
+    address public etfTokenAddress;
     uint public proposalCount;
-    uint public interval;
+    uint public interval = 300;
     address public s_recentWinner;
     uint public currentDeadline;
     address public tokenMarketplaceAddresse;
@@ -76,18 +77,17 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         address vrfCoordinatorV2,
         address _etfToken,
         address _tokenMarketplace,
-        uint _interval,
         uint64 subscriptionId,
         bytes32 gasLane
     ) payable VRFConsumerBaseV2(vrfCoordinatorV2) {
         i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
         etfToken = IETFToken(_etfToken);
         tokenMarketplace = ITokenMarketplace(_tokenMarketplace);
-        interval = _interval;
         i_subscriptionId = subscriptionId;
         i_gasLane = gasLane;
         currentDeadline = block.timestamp + interval;
         tokenMarketplaceAddresse = _tokenMarketplace;
+        etfTokenAddress = _etfToken;
     }
 
     enum Vote {
@@ -108,18 +108,28 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
             proposals[proposalCount].tokenAddress == address(0),
             "There is already an ongoing proposal!"
         );
-        IETFToken token = IETFToken(tokenAddress);
+        IERC20 token = IERC20(tokenAddress);
+        uint price = tokenMarketplace.getPrice(tokenAddress);
+        uint cost = price * amount;
         if (buying == true) {
-            uint price = tokenMarketplace.getPrice(tokenAddress);
-            uint cost = price * amount;
+            uint tokenAmount = token.balanceOf(tokenMarketplaceAddresse);
             require(
                 address(this).balance >= cost,
                 "There is not enough money to buy these token"
+            );
+            require(
+                tokenAmount >= amount,
+                "The marketplace doesnt have enough token"
             );
         }
         if (buying == false) {
             uint balance = token.balanceOf(address(this));
             require(balance >= amount, "There are not enough token to sell!");
+            uint marketplaceBalance = tokenMarketplaceAddresse.balance;
+            require(
+                marketplaceBalance >= cost,
+                "The marketplace doesnt have enough eth"
+            );
         }
         Proposal memory newProposal;
         newProposal.tokenAddress = tokenAddress;
@@ -162,27 +172,45 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
             proposals[proposalCount].nayVotes
         ) {
             if (proposals[proposalCount].buying == true) {
+                IERC20 token = IERC20(proposals[proposalCount].tokenAddress);
+                uint marketplaceBalance = token.balanceOf(
+                    tokenMarketplaceAddresse
+                );
+                if (marketplaceBalance >= proposals[proposalCount].amount) {
+                    uint price = tokenMarketplace.getPrice(
+                        proposals[proposalCount].tokenAddress
+                    );
+                    uint cost = proposals[proposalCount].amount * price;
+                    if (address(this).balance >= cost) {
+                        bool success = tokenMarketplace.buy{value: cost}(
+                            proposals[proposalCount].tokenAddress,
+                            proposals[proposalCount].amount
+                        );
+
+                        require(success, "The buy doesnt work");
+                    }
+                }
+            } else {
                 uint price = tokenMarketplace.getPrice(
                     proposals[proposalCount].tokenAddress
                 );
                 uint cost = proposals[proposalCount].amount * price;
-                if (address(this).balance >= cost) {
-                    bool success = tokenMarketplace.buy{value: cost}(
+                uint marketplaceBalance = tokenMarketplaceAddresse.balance;
+                if (marketplaceBalance >= cost) {
+                    IERC20 token = IERC20(
+                        proposals[proposalCount].tokenAddress
+                    );
+                    uint tokenAmount = proposals[proposalCount].amount;
+                    token.increaseAllowance(
+                        tokenMarketplaceAddresse,
+                        tokenAmount
+                    );
+                    bool success = tokenMarketplace.sell(
                         proposals[proposalCount].tokenAddress,
                         proposals[proposalCount].amount
                     );
-
-                    require(success, "The buy doesnt work");
+                    require(success, "The sell doesnt work");
                 }
-            } else {
-                IERC20 token = IERC20(proposals[proposalCount].tokenAddress);
-                uint tokenAmount = proposals[proposalCount].amount;
-                token.increaseAllowance(tokenMarketplaceAddresse, tokenAmount);
-                bool success = tokenMarketplace.sell(
-                    proposals[proposalCount].tokenAddress,
-                    proposals[proposalCount].amount
-                );
-                require(success, "The sell doesnt work");
             }
 
             proposals[proposalCount].executed = true;
@@ -194,6 +222,13 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
             i_callbackGasLimit,
             NUM_WORDS
         );
+        uint etfAmount = (address(this).balance * 1) / 100;
+        bool s = tokenMarketplace.buy{value: etfAmount}(
+            etfTokenAddress,
+            etfAmount
+        );
+        require(s, "Couldnt buy etfToken");
+
         proposals[proposalCount].executed = true;
         proposalCount++;
         currentDeadline = block.timestamp + interval;
@@ -238,15 +273,24 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         _;
     }
 
-    function getProposal(
+    function getCurrentProposal() public view returns (Proposal memory) {
+        Proposal memory currentProposal = proposals[proposalCount];
+        return currentProposal;
+    }
+
+    function getOldProposal(
         uint proposalIndex
     ) public view returns (Proposal memory) {
-        Proposal memory currentProposal = proposals[proposalIndex];
-        return currentProposal;
+        Proposal memory oldProposal = proposals[proposalIndex];
+        return oldProposal;
     }
 
     function getRecentWinner() public view returns (address) {
         return s_recentWinner;
+    }
+
+    function getProposalNum() public view returns (uint) {
+        return proposalCount;
     }
 
     receive() external payable {}
