@@ -352,6 +352,30 @@ export const ABI_TOKENMARKETPLACE = [
         name: "tokenAddress",
         type: "address",
       },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "getTotalPrice",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "tokenAddress",
+        type: "address",
+      },
     ],
     name: "isAvailable",
     outputs: [
@@ -439,7 +463,7 @@ export const ABI_TOKENMARKETPLACE = [
     type: "function",
   },
 ];
-export const ADDRESS_ETFTOKEN = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
+export const ADDRESS_ETFTOKEN = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853";
 export const ABI_ETFTOKEN = [
   {
     inputs: [
@@ -754,7 +778,7 @@ export const ABI_ETFTOKEN = [
     type: "function",
   },
 ];
-export const ADDRESS_ETFCONTRACT = "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e";
+export const ADDRESS_ETFCONTRACT = "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6";
 export const ABI_ETFCONTRACT = [
   {
     inputs: [
@@ -807,13 +831,38 @@ export const ABI_ETFCONTRACT = [
     anonymous: false,
     inputs: [
       {
+        indexed: true,
+        internalType: "address",
+        name: "tokenAddress",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "bool",
+        name: "buying",
+        type: "bool",
+      },
+    ],
+    name: "ProposalSend",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
         indexed: false,
         internalType: "uint256",
         name: "requestId",
         type: "uint256",
       },
     ],
-    name: "RequestedRaffleWinner",
+    name: "RequestedWinner",
     type: "event",
   },
   {
@@ -828,6 +877,29 @@ export const ABI_ETFCONTRACT = [
     ],
     name: "WinnerPicked",
     type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "proposalIndex",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "enum ETFContract.Vote",
+        name: "vote",
+        type: "uint8",
+      },
+    ],
+    name: "voteSend",
+    type: "event",
+  },
+  {
+    stateMutability: "payable",
+    type: "fallback",
   },
   {
     inputs: [
@@ -1208,7 +1280,7 @@ export const ABI_ETFCONTRACT = [
     type: "receive",
   },
 ];
-export const ADDRESS_VRFMOCK = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853";
+export const ADDRESS_VRFMOCK = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
 export const ABI_VRFMOCK = [
   {
     inputs: [

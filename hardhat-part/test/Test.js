@@ -3,7 +3,52 @@ const { expect } = require("chai");
 const { parseEther, formatEther } = require("ethers/lib/utils");
 const { ethers, network } = require("hardhat");
 
-/* describe("unit tests", () => {
+describe("unit tests ETFToken", () => {
+  let ETFToken, etfToken;
+  beforeEach(async () => {
+    const [owner] = await ethers.getSigners();
+    const transactionCount = await owner.getTransactionCount();
+    const futureAddress = ethers.utils.getContractAddress({
+      from: owner.address,
+      nonce: transactionCount + 1,
+    });
+
+    ETFToken = await ethers.getContractFactory("ETFToken");
+    etfToken = await ETFToken.deploy(futureAddress);
+    await etfToken.deployed;
+  });
+  it("Will burn token every transaction", async () => {
+    const [owner, user1] = await ethers.getSigners();
+    await etfToken.transfer(user1.address, parseEther("100000"));
+    let supply = await etfToken.totalSupply();
+    supply = await formatEther(supply.toString());
+    await expect(supply.toString()).to.equal("98000.0");
+  });
+  it("Won't let the sender spend more token as he has", async () => {
+    const [onwer, user1, user2] = await ethers.getSigners();
+    await etfToken.transfer(user1.address, parseEther("1000"));
+    await expect(
+      etfToken.connect(user1).transfer(user2.address, parseEther("961"))
+    ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+  });
+  it("Will execute the transferFrom function and applies the fees", async () => {
+    const [owner, user1] = await ethers.getSigners();
+    await etfToken.approve(user1.address, parseEther("1000"));
+    await etfToken
+      .connect(user1)
+      .transferFrom(owner.address, user1.address, parseEther("1000"));
+  });
+  it("Will revert if the there is not enough allowance", async () => {
+    const [owner, user1] = await ethers.getSigners();
+    await expect(
+      etfToken
+        .connect(user1)
+        .transferFrom(owner.address, user1.address, parseEther("1000"))
+    ).to.be.revertedWith("ERC20: insufficient allowance");
+  });
+});
+
+describe("unit tests TokenMarketplace", () => {
   let DummyToken, dummyToken, TokenMarketplace, tokenMarketplace;
   beforeEach(async () => {
     DummyToken = await ethers.getContractFactory("DummyToken");
@@ -21,7 +66,7 @@ const { ethers, network } = require("hardhat");
     );
     const tx1 = await tokenMarketplace.setPrice(dummyToken.address, 1);
   });
-  it("Lets people buy", async () => {
+  it("Let people buy", async () => {
     const [owner, user1] = await ethers.getSigners();
 
     const tx = await tokenMarketplace
@@ -36,7 +81,7 @@ const { ethers, network } = require("hardhat");
     contractEthBalance = await formatEther(contractEthBalance.toString());
     expect(contractEthBalance.toString()).to.equal("210.0");
   });
-  it("lets people sell", async () => {
+  it("Let people sell", async () => {
     const [owner, user1] = await ethers.getSigners();
 
     await dummyToken.approve(tokenMarketplace.address, parseEther("10"));
@@ -53,25 +98,25 @@ const { ethers, network } = require("hardhat");
     );
     expect(contractEthBalance.toString()).to.equal("9610");
   });
-  it("lets only the owner change the price", async () => {
+  it("Let only the owner change the price", async () => {
     const [owner, user1] = await ethers.getSigners();
     await expect(
       tokenMarketplace
         .connect(user1)
         .changePrice(dummyToken.address, parseEther("1"))
-    ).to.be.revertedWith("You are not the owner");
+    ).to.be.revertedWith("You are not the owner!");
   });
-  it("let the owner change the price", async () => {
+  it("Let the owner change the price", async () => {
     const [owner, user1] = await ethers.getSigners();
     await tokenMarketplace.changePrice(dummyToken.address, parseEther("1"));
     let price = await tokenMarketplace.getPrice(dummyToken.address);
     price = await formatEther(price.toString());
     expect(price.toString()).to.equal("1.0");
   });
-  it("cant add a price twice", async () => {
+  it("Can't add a price twice", async () => {
     await expect(
       tokenMarketplace.setPrice(dummyToken.address, parseEther("1"))
-    ).to.be.revertedWith("There is already a price");
+    ).to.be.revertedWith("There is already a price!");
   });
   it("Will be reverted if there are no token available", async () => {
     await tokenMarketplace.changePrice(dummyToken.address, 0);
@@ -83,18 +128,17 @@ const { ethers, network } = require("hardhat");
     await tx.wait();
     await expect(
       tokenMarketplace.buy(dummyToken.address, parseEther("10"))
-    ).to.be.revertedWith("No token available");
+    ).to.be.revertedWith("No token available!");
   });
   it("will revert if there are not enough token available", async () => {
     await tokenMarketplace.changePrice(dummyToken.address, 0);
     await expect(
       tokenMarketplace.buy(dummyToken.address, parseEther("500001"))
-    ).to.be.revertedWith("Not enough token available");
+    ).to.be.revertedWith("Not enough token available!");
   });
 });
- */
 
-describe("unit tests", () => {
+describe("unit tests ETFContract", () => {
   async function deployFixture() {
     const interval = 300;
 
@@ -131,19 +175,6 @@ describe("unit tests", () => {
     const tx1 = await tokenMarketplace.setPrice(dummyToken.address, 1);
 
     const [owner] = await ethers.getSigners();
-    const transactionCount = await owner.getTransactionCount();
-
-    const futureAddress = ethers.utils.getContractAddress({
-      from: owner.address,
-      nonce: transactionCount + 1,
-    });
-
-    const ETFToken = await ethers.getContractFactory("ETFToken");
-    const etfToken = await ETFToken.deploy(futureAddress);
-    await etfToken.deployed();
-
-    await etfToken.transfer(tokenMarketplace.address, parseEther("10000"));
-    await tokenMarketplace.setPrice(etfToken.address, 1);
 
     const transactionResponse = await vrfCoordinatorV2Mock.createSubscription();
     const transactionReceipt = await transactionResponse.wait();
@@ -154,6 +185,14 @@ describe("unit tests", () => {
     );
 
     const sub = await vrfCoordinatorV2Mock.getSubscription("1");
+    const transactionCount = await owner.getTransactionCount();
+    const futureAddress = ethers.utils.getContractAddress({
+      from: owner.address,
+      nonce: transactionCount + 1,
+    });
+    const ETFToken = await ethers.getContractFactory("ETFToken");
+    const etfToken = await ETFToken.deploy(futureAddress);
+    await etfToken.deployed();
 
     const ETFContract = await ethers.getContractFactory("ETFContract");
     const etfContract = await ETFContract.deploy(
@@ -168,6 +207,9 @@ describe("unit tests", () => {
     await etfContract.deployed();
     await vrfCoordinatorV2Mock.addConsumer(subId, etfContract.address);
 
+    await etfToken.transfer(tokenMarketplace.address, parseEther("10000"));
+    await tokenMarketplace.setPrice(etfToken.address, 1);
+
     return {
       vrfCoordinatorV2Mock,
       TokenMarketplace,
@@ -181,13 +223,22 @@ describe("unit tests", () => {
       interval,
     };
   }
-  it("should revert if the marketplace doesnt have enough token to buy", async () => {
+  it("Sends money to the etfContraft from every transaction of etfToken", async () => {
+    const { etfContract, etfToken } = await loadFixture(deployFixture);
+    const [owner, user1] = await ethers.getSigners();
+    const tx = await etfToken.transfer(user1.address, parseEther("10000"));
+    await tx.wait();
+    let balance = await etfToken.balanceOf(etfContract.address);
+    balance = formatEther(balance.toString());
+    await expect(balance.toString()).to.equal("400.0");
+  });
+  it("Should revert if the marketplace doesn't have enough token to buy", async () => {
     const { etfContract, dummyToken } = await loadFixture(deployFixture);
     await expect(
       etfContract.addProposal(dummyToken.address, parseEther("501"), true)
-    ).to.be.revertedWith("The marketplace doesnt have enough token");
+    ).to.be.revertedWith("The marketplace doesn't have enough token!");
   });
-  it("should revert if the marketplace doesnt have enough eth to buy our tokens", async () => {
+  it("Should revert if the marketplace doesn't have enough eth to buy our tokens", async () => {
     const { etfContract, dummyToken } = await loadFixture(deployFixture);
     await dummyToken.transfer(etfContract.address, parseEther("5000"));
     await expect(
@@ -205,32 +256,32 @@ describe("unit tests", () => {
     const currentProposal = await etfContract.getCurrentProposal();
     await expect(currentProposal.tokenAddress).to.equal(dummyToken.address);
   });
-  it("Reverts if the contract doesnt have enough ETH to buy", async () => {
+  it("Reverts if the contract doesn't have enough ETH to buy", async () => {
     const { etfContract, dummyToken } = await loadFixture(deployFixture);
     await expect(
       etfContract.addProposal(dummyToken.address, parseEther("1001"), true)
-    ).to.be.revertedWith("There is not enough money to buy these token");
+    ).to.be.revertedWith("There is not enough ETH to buy these token!");
   });
-  it("Reverts if the contract doesnt have enought token to sell", async () => {
+  it("Reverts if the contract doesn't have enought token to sell", async () => {
     const { etfContract, dummyToken } = await loadFixture(deployFixture);
     await expect(
       etfContract.addProposal(dummyToken.address, parseEther("200"), false)
     ).to.be.revertedWith("There are not enough token to sell!");
   });
-  it("Wont accept a proposal from someone who doesnt hold enough token", async () => {
+  it("Wont accept a proposal from someone who doesn't hold enough token", async () => {
     const { etfContract, dummyToken, etfToken } = await loadFixture(
       deployFixture
     );
     const [owner, user1] = await ethers.getSigners();
-    const tx = await etfToken.transfer(user1.address, 99);
+    const tx = await etfToken.transfer(user1.address, parseEther("0.009"));
     await tx.wait();
     await expect(
       etfContract
         .connect(user1)
         .addProposal(dummyToken.address, parseEther("100"), true)
-    ).to.be.revertedWith("You need to hold at least 100 token");
+    ).to.be.revertedWith("You need to hold at least 0.01 ETFToken!");
   });
-  describe("after add a buy proposal", () => {
+  describe("After adding a buy proposal", () => {
     async function proposeFixture() {
       const {
         vrfCoordinatorV2Mock,
@@ -263,7 +314,7 @@ describe("unit tests", () => {
         interval,
       };
     }
-    it("gives me the winner if only 1 person voted", async () => {
+    it("Choose the winner if only 1 person has voted", async () => {
       const {
         dummyToken,
         etfContract,
@@ -288,25 +339,25 @@ describe("unit tests", () => {
         etfContract.addProposal(dummyToken.address, 200, false)
       ).to.be.revertedWith("There is already an ongoing proposal!");
     });
-    it("let people vote", async () => {
+    it("Let people vote", async () => {
       const { dummyToken, etfContract } = await loadFixture(proposeFixture);
       const tx = await etfContract.voteOnProposal(0);
       let proposal = await etfContract.getCurrentProposal();
       await expect(proposal.yayVotes.toString()).to.equal("1");
     });
-    it("wont let people without 100 token vote", async () => {
+    it("Wont let people without 100 token vote", async () => {
       const { dummyToken, etfContract } = await loadFixture(proposeFixture);
       const [owner, user1] = await ethers.getSigners();
       await expect(
         etfContract.connect(user1).voteOnProposal(0)
-      ).to.be.revertedWith("You need to hold at least 100 token");
+      ).to.be.revertedWith("You need to hold at least 0.01 ETFToken!");
     });
-    it("wont let you vote twice", async () => {
+    it("Wont let you vote twice", async () => {
       const { dummyToken, etfContract } = await loadFixture(proposeFixture);
       const tx = await etfContract.voteOnProposal(0);
       await tx.wait();
       await expect(etfContract.voteOnProposal(1)).to.be.revertedWith(
-        "You already voted"
+        "You already voted!"
       );
     });
     describe("after voting", () => {
@@ -325,9 +376,9 @@ describe("unit tests", () => {
         } = await loadFixture(proposeFixture);
 
         const [owner, user1, user2, user3] = await ethers.getSigners();
-        await etfToken.transfer(user1.address, 200);
-        await etfToken.transfer(user2.address, 200);
-        await etfToken.transfer(user3.address, 200);
+        await etfToken.transfer(user1.address, parseEther("0.02"));
+        await etfToken.transfer(user2.address, parseEther("0.02"));
+        await etfToken.transfer(user3.address, parseEther("0.02"));
         await etfContract.voteOnProposal(0);
         await etfContract.connect(user1).voteOnProposal(0);
         await etfContract.connect(user2).voteOnProposal(0);
@@ -347,7 +398,7 @@ describe("unit tests", () => {
           interval,
         };
       }
-      it("wont buy and wont revert if there arent enough token anymore", async () => {
+      it("Wont buy and wont revert if there aren't enough token anymore", async () => {
         const {
           etfContract,
           dummyToken,
@@ -364,16 +415,16 @@ describe("unit tests", () => {
         balance = formatEther(balance.toString());
         await expect(balance.toString()).to.equal("0.0");
       });
-      it("wont let people vote anymore after time passed", async () => {
+      it("Wont let people vote anymore after time passed", async () => {
         const { etfContract, etfToken } = await loadFixture(votedFixture);
         const [owner, user1, user2, user3, user4] = await ethers.getSigners();
-        await etfToken.transfer(user4.address, 200);
+        await etfToken.transfer(user4.address, parseEther("0.02"));
         await expect(
           etfContract.connect(user4).voteOnProposal(0)
-        ).to.be.revertedWith("The deadline already passed");
+        ).to.be.revertedWith("The proposal is still ongoing!");
       });
-      it("will execute if there are enough yes votes", async () => {
-        const { etfContract, etfToken, dummyToken, vrfCoordinatorV2Mock } =
+      it("Will execute if there are enough yes votes", async () => {
+        const { etfContract, dummyToken, vrfCoordinatorV2Mock } =
           await loadFixture(votedFixture);
 
         const [owner] = await ethers.getSigners();
@@ -385,13 +436,11 @@ describe("unit tests", () => {
         balance = formatEther(balance.toString());
         await expect(balance.toString()).to.equal("100.0");
       });
-      it("can propose a new proposale after the old one is executed", async () => {
-        const { etfContract, etfToken, dummyToken } = await loadFixture(
-          votedFixture
-        );
+      it("Can propose a new proposale after the old one is executed", async () => {
+        const { etfContract, dummyToken } = await loadFixture(votedFixture);
         const tx = await etfContract.performUpkeep("0x");
         await tx.wait();
-        const tx1 = await etfContract.addProposal(
+        await etfContract.addProposal(
           dummyToken.address,
           parseEther("50"),
           false
@@ -401,11 +450,12 @@ describe("unit tests", () => {
           formatEther(proposal.amount.toString()).toString()
         ).to.equal("50.0");
       });
-      /* it("picks a winner, sents money and resets", async () => {
-        const [owner, user1, user2, user3] = await ethers.getSigners();
+      it("Picks a winner, sends money and resets", async () => {
+        const [owner, user1] = await ethers.getSigners();
 
-        const { etfContract, etfToken, dummyToken, vrfCoordinatorV2Mock } =
-          await loadFixture(votedFixture);
+        const { etfContract, vrfCoordinatorV2Mock } = await loadFixture(
+          votedFixture
+        );
         let contractBalance = await ethers.provider.getBalance(
           etfContract.address
         );
@@ -413,7 +463,6 @@ describe("unit tests", () => {
         let reward =
           ((contractBalance - 100 - (contractBalance * 1) / 100) * 1) / 100;
         let startingBalance = await user1.getBalance();
-        let requestId = 1;
         await new Promise(async (resolve, rejects) => {
           etfContract.once("WinnerPicked", async () => {
             console.log("WinnerPicked event fired!");
@@ -438,10 +487,10 @@ describe("unit tests", () => {
 
           await vrfCoordinatorV2Mock.fulfillRandomWords(1, etfContract.address);
         });
-      }); */
+      });
     });
   });
-  describe("after add a sell proposal", async () => {
+  describe("After adding a sell proposal", async () => {
     async function proposeSellFixture() {
       const {
         vrfCoordinatorV2Mock,
@@ -476,11 +525,11 @@ describe("unit tests", () => {
       };
     }
     it("Shows that there is a sell proposal", async () => {
-      const { etfContract, dummyToken } = await loadFixture(proposeSellFixture);
+      const { etfContract } = await loadFixture(proposeSellFixture);
       const proposal = await etfContract.getCurrentProposal();
       await expect(proposal.buying).to.equal(false);
     });
-    describe("after voting", () => {
+    describe("After voting", () => {
       async function votedFixture() {
         const {
           vrfCoordinatorV2Mock,
@@ -496,9 +545,9 @@ describe("unit tests", () => {
         } = await loadFixture(proposeSellFixture);
 
         const [owner, user1, user2, user3] = await ethers.getSigners();
-        await etfToken.transfer(user1.address, 200);
-        await etfToken.transfer(user2.address, 200);
-        await etfToken.transfer(user3.address, 200);
+        await etfToken.transfer(user1.address, parseEther("0.02"));
+        await etfToken.transfer(user2.address, parseEther("0.02"));
+        await etfToken.transfer(user3.address, parseEther("0.02"));
         await etfContract.voteOnProposal(0);
         await etfContract.connect(user1).voteOnProposal(0);
         await etfContract.connect(user2).voteOnProposal(0);
@@ -518,7 +567,7 @@ describe("unit tests", () => {
           interval,
         };
       }
-      it("wont sell and wont revert if there arent enough eth anymore in the marketplace", async () => {
+      it("Wont sell and wont revert if there aren't enough eth anymore in the marketplace", async () => {
         const {
           etfContract,
           dummyToken,
@@ -535,7 +584,7 @@ describe("unit tests", () => {
         balance = formatEther(balance.toString());
         await expect(balance.toString()).to.equal("980.1");
       });
-      it("it will execute if there are enough yes votes", async () => {
+      it("It will execute if there are enough yes votes", async () => {
         const {
           etfContract,
           etfToken,
@@ -559,17 +608,17 @@ describe("unit tests", () => {
         await expect(ethBalance.toString()).to.equal("1078.11");
         let etfTokenBalance = await etfToken.balanceOf(etfContract.address);
         etfTokenBalance = await formatEther(etfTokenBalance.toString());
-        await expect(etfTokenBalance.toString()).to.equal("10.56");
+        await expect(etfTokenBalance.toString()).to.equal("210.7812");
       });
-      /* it("picks a winner, sents money and resets", async () => {
-        const [owner, user1, user2, user3] = await ethers.getSigners();
+      it("Picks a winner, sents money and resets", async () => {
+        const [owner, user1] = await ethers.getSigners();
 
-        const { etfContract, etfToken, dummyToken, vrfCoordinatorV2Mock } =
-          await loadFixture(votedFixture);
+        const { etfContract, vrfCoordinatorV2Mock } = await loadFixture(
+          votedFixture
+        );
 
         let startingBalance = await user1.getBalance();
         let requestId = 1;
-        console.log("e");
         await new Promise(async (resolve, rejects) => {
           etfContract.once("WinnerPicked", async () => {
             console.log("WinnerPicked event fired!");
@@ -599,7 +648,7 @@ describe("unit tests", () => {
           //console.log(txReceipt.events[4].args.requestId);
           await vrfCoordinatorV2Mock.fulfillRandomWords(1, etfContract.address);
         });
-      }); */
+      });
     });
   });
 });

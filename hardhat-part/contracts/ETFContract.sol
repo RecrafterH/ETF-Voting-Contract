@@ -31,10 +31,6 @@ interface ITokenMarketplace {
     function sell(address tokenAddress, uint256 amount) external returns (bool);
 
     function getPrice(address tokenAddress) external view returns (uint);
-
-    function getMyTokenBalance(
-        address tokenAddress
-    ) external view returns (uint);
 }
 
 interface IETFToken {
@@ -42,6 +38,16 @@ interface IETFToken {
 }
 
 contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
+    /* Type declarations */
+
+    enum Vote {
+        YAY,
+        NAY
+    }
+    /* State Variables */
+
+    // ETF Variables
+
     IETFToken etfToken;
     ITokenMarketplace tokenMarketplace;
 
@@ -62,6 +68,10 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         bool executed;
     }
 
+    mapping(uint => mapping(address => bool)) public voted;
+    mapping(uint => Proposal) public proposals;
+    address payable[] private voters;
+
     // Chainlink VRF Variables
     VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
     uint64 private immutable i_subscriptionId;
@@ -71,7 +81,11 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
     uint32 private constant NUM_WORDS = 1;
 
     event WinnerPicked(address indexed winner);
-    event RequestedRaffleWinner(uint requestId);
+    event RequestedWinner(uint requestId);
+    event ProposalSend(address indexed tokenAddress, uint amount, bool buying);
+    event voteSend(uint proposalIndex, Vote vote);
+
+    /* Functions */
 
     constructor(
         address vrfCoordinatorV2,
@@ -90,15 +104,6 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         etfTokenAddress = _etfToken;
     }
 
-    enum Vote {
-        YAY,
-        NAY
-    }
-
-    mapping(uint => mapping(address => bool)) public voted;
-    mapping(uint => Proposal) public proposals;
-    address payable[] private voters;
-
     function addProposal(
         address tokenAddress,
         uint amount,
@@ -115,11 +120,11 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
             uint tokenAmount = token.balanceOf(tokenMarketplaceAddresse);
             require(
                 address(this).balance >= cost,
-                "There is not enough money to buy these token"
+                "There is not enough ETH to buy these token!"
             );
             require(
                 tokenAmount >= amount,
-                "The marketplace doesnt have enough token"
+                "The marketplace doesn't have enough token!"
             );
         }
         if (buying == false) {
@@ -137,12 +142,16 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         newProposal.buying = buying;
         newProposal.deadline = currentDeadline;
         proposals[proposalCount] = newProposal;
+        emit ProposalSend(tokenAddress, amount, buying);
     }
 
     function voteOnProposal(
         Vote vote
     ) external onlyTokenHolder proposalOngoing {
-        require(voted[proposalCount][msg.sender] == false, "You already voted");
+        require(
+            voted[proposalCount][msg.sender] == false,
+            "You already voted!"
+        );
         if (vote == Vote.YAY) {
             proposals[proposalCount].yayVotes++;
             voted[proposalCount][msg.sender] = true;
@@ -153,6 +162,7 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         }
 
         voters.push(payable(msg.sender));
+        emit voteSend(proposalCount, vote);
     }
 
     function checkUpkeep(
@@ -166,7 +176,7 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
 
     function performUpkeep(bytes calldata /*performData*/) external {
         (bool upkeepNeeded, ) = checkUpkeep("");
-        require(upkeepNeeded, "Requirements are not fulfilled");
+        require(upkeepNeeded, "Requirements are not fulfilled!");
         if (
             proposals[proposalCount].yayVotes >
             proposals[proposalCount].nayVotes
@@ -187,7 +197,7 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
                             proposals[proposalCount].amount
                         );
 
-                        require(success, "The buy doesnt work");
+                        require(success, "The buy did not work");
                     }
                 }
             } else {
@@ -209,7 +219,7 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
                         proposals[proposalCount].tokenAddress,
                         proposals[proposalCount].amount
                     );
-                    require(success, "The sell doesnt work");
+                    require(success, "The sell did not work!");
                 }
             }
 
@@ -227,12 +237,12 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
             etfTokenAddress,
             etfAmount
         );
-        require(s, "Couldnt buy etfToken");
+        require(s, "You couldn't buy ETFToken back!");
 
         proposals[proposalCount].executed = true;
         proposalCount++;
         currentDeadline = block.timestamp + interval;
-        emit RequestedRaffleWinner(requestId);
+        emit RequestedWinner(requestId);
     }
 
     function fulfillRandomWords(
@@ -245,14 +255,16 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         voters = new address payable[](0);
         uint price = (address(this).balance * 1) / 100;
         (bool success, ) = recentWinner.call{value: price}("");
-        require(success, "Transaction failed");
+        require(success, "Transaction failed!");
         emit WinnerPicked(recentWinner);
     }
 
+    /* Modifier */
+
     modifier onlyTokenHolder() {
         require(
-            etfToken.balanceOf(msg.sender) >= 100,
-            "You need to hold at least 100 token"
+            etfToken.balanceOf(msg.sender) >= 0.01 ether,
+            "You need to hold at least 0.01 ETFToken!"
         );
         _;
     }
@@ -260,7 +272,7 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
     modifier proposalOngoing() {
         require(
             proposals[proposalCount].deadline >= block.timestamp,
-            "The deadline already passed"
+            "The proposal is still ongoing!"
         );
         _;
     }
@@ -268,10 +280,12 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
     modifier proposalEnded() {
         require(
             proposals[proposalCount].deadline < block.timestamp,
-            "The deadline already passed"
+            "The deadline already passed!"
         );
         _;
     }
+
+    /* Getter Functions */
 
     function getCurrentProposal() public view returns (Proposal memory) {
         Proposal memory currentProposal = proposals[proposalCount];
@@ -294,4 +308,6 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
     }
 
     receive() external payable {}
+
+    fallback() external payable {}
 }

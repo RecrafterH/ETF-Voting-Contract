@@ -22,6 +22,12 @@ module.exports = {
       account: [LOCAL_PRIVATE_KEY],
     },
   },
+  etherscan: {
+    // yarn hardhat verify --network <NETWORK> <CONTRACT_ADDRESS> <CONSTRUCTOR_PARAMETERS>
+    apiKey: {
+      goerli: process.env.ETHERSCAN_API_KEY,
+    },
+  },
   mocha: {
     timeout: 500000, // 500 seconds max for running tests
   },

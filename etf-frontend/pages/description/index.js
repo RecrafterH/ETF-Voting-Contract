@@ -1,4 +1,5 @@
 import styles from "@/styles/Home.module.css";
+import Head from "next/head";
 import { Box, Text, Heading, Flex } from "@chakra-ui/react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
@@ -6,6 +7,12 @@ import Footer from "@/components/footer";
 const AboutUs = () => {
   return (
     <Box margin="0" background="linear-gradient(54deg, #758fff, #2f2877)">
+      <Head>
+        <title>Description ETDDapp</title>
+        <meta name="description" content="Created by Recrafter" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
       <Header />
       <Box className={styles.voting} padding="70px">
         <Text

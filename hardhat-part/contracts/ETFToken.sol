@@ -16,6 +16,11 @@ contract ETFToken is ERC20, ERC20Burnable {
         address to,
         uint256 amount
     ) public virtual override returns (bool) {
+        uint256 fromBalance = balanceOf(msg.sender);
+        require(
+            fromBalance >= amount,
+            "ERC20: transfer amount exceeds balance"
+        );
         address owner = _msgSender();
 
         uint burning = (amount * 2) / 100;
@@ -25,6 +30,28 @@ contract ETFToken is ERC20, ERC20Burnable {
         _transfer(owner, etfAddress, etfAmount);
         _transfer(owner, to, _amount);
 
+        return true;
+    }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) public virtual override returns (bool) {
+        uint256 fromBalance = balanceOf(from);
+        require(
+            fromBalance >= amount,
+            "ERC20: transfer amount exceeds balance"
+        );
+        address spender = _msgSender();
+        uint burning = (amount * 2) / 100;
+        uint etfAmount = (amount * 2) / 100;
+        uint _amount = amount - burning - etfAmount;
+        _spendAllowance(from, spender, amount);
+
+        _transfer(from, etfAddress, etfAmount);
+        _transfer(from, to, _amount);
+        burn(burning);
         return true;
     }
 }
