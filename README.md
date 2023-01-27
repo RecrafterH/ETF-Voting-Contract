@@ -4,8 +4,9 @@ ETF Voting Contract is a decentralized ETF where the ETFToken holder can vote on
 
 ## Installation
 
-clone the Github repository
-
+```bash
+git clone https://github.com/RecrafterH/ETF-Voting-Contract.git
+```
 
 ## Usage
 
