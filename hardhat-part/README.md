@@ -1,13 +1,5 @@
-# Sample Hardhat Project
+# ETF Voting Contract
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+The hardhat part of this project consists of 4 different contracts, unit tests and a deploy script.
 
-Try running some of the following tasks:
-
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.js
-```
+The main focus is on the Voting Contract and the ETF Token, which is part of the Ecosystem. The DummyToken and the Marketplace are helper contracts to present the functionality of the ETF contract. For this reason, the helper contracts are also kept quite simple.
