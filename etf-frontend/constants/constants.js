@@ -1,4 +1,4 @@
-export const ADDRESS_DUMMYTOKEN = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+export const ADDRESS_DUMMYTOKEN = "0xc351628EB244ec633d5f21fBD6621e1a683B1181";
 export const ABI_DUMMYTOKEN = [
   {
     inputs: [],
@@ -277,7 +277,7 @@ export const ABI_DUMMYTOKEN = [
   },
 ];
 export const ADDRESS_TOKENMARKETPLACE =
-  "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+  "0xFD471836031dc5108809D173A067e8486B9047A3";
 export const ABI_TOKENMARKETPLACE = [
   {
     inputs: [],
@@ -463,7 +463,7 @@ export const ABI_TOKENMARKETPLACE = [
     type: "function",
   },
 ];
-export const ADDRESS_ETFTOKEN = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853";
+export const ADDRESS_ETFTOKEN = "0x5081a39b8A5f0E35a8D959395a630b68B74Dd30f";
 export const ABI_ETFTOKEN = [
   {
     inputs: [
@@ -778,7 +778,7 @@ export const ABI_ETFTOKEN = [
     type: "function",
   },
 ];
-export const ADDRESS_ETFCONTRACT = "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6";
+export const ADDRESS_ETFCONTRACT = "0x1fA02b2d6A771842690194Cf62D91bdd92BfE28d";
 export const ABI_ETFCONTRACT = [
   {
     inputs: [
@@ -810,6 +810,46 @@ export const ABI_ETFCONTRACT = [
     ],
     stateMutability: "payable",
     type: "constructor",
+  },
+  {
+    inputs: [],
+    name: "ETFContract__HoldingNotEnoughETFToken",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "ETFContract__MarketplaceDoesntHaveEnoughETH",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "ETFContract__NotEnoughEthInContract",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "ETFContract__NotEnoughTokenToBuy",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "ETFContract__NotEnoughTokenToSell",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "ETFContract__ProposalHasEnded",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "ETFContract__ProposalIsStillOngoing",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "ETFContract__YouAlreadyVoted",
+    type: "error",
   },
   {
     inputs: [
@@ -1108,6 +1148,19 @@ export const ABI_ETFCONTRACT = [
   },
   {
     inputs: [],
+    name: "getRemainingTime",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "interval",
     outputs: [
       {
@@ -1280,7 +1333,7 @@ export const ABI_ETFCONTRACT = [
     type: "receive",
   },
 ];
-export const ADDRESS_VRFMOCK = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
+export const ADDRESS_VRFMOCK = "0xB0D4afd8879eD9F52b28595d31B441D079B2Ca07";
 export const ABI_VRFMOCK = [
   {
     inputs: [

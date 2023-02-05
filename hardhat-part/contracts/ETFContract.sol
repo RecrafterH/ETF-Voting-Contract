@@ -37,14 +37,28 @@ interface IETFToken {
     function balanceOf(address account) external view returns (uint256);
 }
 
+error ETFContract__HoldingNotEnoughETFToken();
+error ETFContract__ProposalHasEnded();
+error ETFContract__ProposalIsStillOngoing();
+error ETFContract__NotEnoughEthInContract();
+error ETFContract__NotEnoughTokenToBuy();
+error ETFContract__NotEnoughTokenToSell();
+error ETFContract__MarketplaceDoesntHaveEnoughETH();
+error ETFContract__YouAlreadyVoted();
+
 contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
-    /* Type declarations */
+    ///////////////////////
+    // Type declarations //
+    ///////////////////////
 
     enum Vote {
         YAY,
         NAY
     }
-    /* State Variables */
+
+    /////////////////////
+    // State Variables //
+    /////////////////////
 
     // ETF Variables
 
@@ -53,7 +67,7 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
 
     address public etfTokenAddress;
     uint public proposalCount;
-    uint public interval = 300;
+    uint public interval = 100;
     address public s_recentWinner;
     uint public currentDeadline;
     address public tokenMarketplaceAddresse;
@@ -85,7 +99,35 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
     event ProposalSend(address indexed tokenAddress, uint amount, bool buying);
     event voteSend(uint proposalIndex, Vote vote);
 
-    /* Functions */
+    //////////////
+    // Modifier //
+    //////////////
+
+    modifier onlyTokenHolder() {
+        if (etfToken.balanceOf(msg.sender) < 0.01 ether) {
+            revert ETFContract__HoldingNotEnoughETFToken();
+        }
+        _;
+    }
+
+    modifier proposalOngoing() {
+        if (proposals[proposalCount].deadline <= block.timestamp) {
+            revert ETFContract__ProposalHasEnded();
+        }
+
+        _;
+    }
+
+    modifier proposalEnded() {
+        if (proposals[proposalCount].deadline > block.timestamp) {
+            revert ETFContract__ProposalIsStillOngoing();
+        }
+        _;
+    }
+
+    ///////////////
+    // Functions //
+    ///////////////
 
     constructor(
         address vrfCoordinatorV2,
@@ -104,37 +146,41 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         etfTokenAddress = _etfToken;
     }
 
+    /*
+     * @notice Method for adding a proposal
+     * @param tokenAddress Address of token contract
+     * @param amount Amount of the token
+     * @param buying Boolean if the contract should buy(true) or sell(false)
+     */
     function addProposal(
         address tokenAddress,
         uint amount,
         bool buying
     ) external onlyTokenHolder {
-        require(
-            proposals[proposalCount].tokenAddress == address(0),
-            "There is already an ongoing proposal!"
-        );
+        if (proposals[proposalCount].tokenAddress != address(0)) {
+            revert ETFContract__ProposalIsStillOngoing();
+        }
         IERC20 token = IERC20(tokenAddress);
         uint price = tokenMarketplace.getPrice(tokenAddress);
         uint cost = price * amount;
         if (buying == true) {
             uint tokenAmount = token.balanceOf(tokenMarketplaceAddresse);
-            require(
-                address(this).balance >= cost,
-                "There is not enough ETH to buy these token!"
-            );
-            require(
-                tokenAmount >= amount,
-                "The marketplace doesn't have enough token!"
-            );
+            if (address(this).balance < cost) {
+                revert ETFContract__NotEnoughEthInContract();
+            }
+            if (tokenAmount < amount) {
+                revert ETFContract__NotEnoughTokenToBuy();
+            }
         }
         if (buying == false) {
             uint balance = token.balanceOf(address(this));
-            require(balance >= amount, "There are not enough token to sell!");
+            if (balance < amount) {
+                revert ETFContract__NotEnoughTokenToSell();
+            }
             uint marketplaceBalance = tokenMarketplaceAddresse.balance;
-            require(
-                marketplaceBalance >= cost,
-                "The marketplace doesnt have enough eth"
-            );
+            if (marketplaceBalance < cost) {
+                revert ETFContract__MarketplaceDoesntHaveEnoughETH();
+            }
         }
         Proposal memory newProposal;
         newProposal.tokenAddress = tokenAddress;
@@ -145,13 +191,16 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         emit ProposalSend(tokenAddress, amount, buying);
     }
 
+    /*
+     * @notice Method for vote on the proposal
+     * @param vote Vote for or against proposal
+     */
     function voteOnProposal(
         Vote vote
     ) external onlyTokenHolder proposalOngoing {
-        require(
-            voted[proposalCount][msg.sender] == false,
-            "You already voted!"
-        );
+        if (voted[proposalCount][msg.sender] == true) {
+            revert ETFContract__YouAlreadyVoted();
+        }
         if (vote == Vote.YAY) {
             proposals[proposalCount].yayVotes++;
             voted[proposalCount][msg.sender] = true;
@@ -165,6 +214,9 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         emit voteSend(proposalCount, vote);
     }
 
+    /*
+     * @notice Method checking the requirements of the upkeep
+     */
     function checkUpkeep(
         bytes memory /* checkData */
     ) public view returns (bool upkeepNeeded, bytes memory /*performData*/) {
@@ -174,56 +226,56 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         return (upkeepNeeded, "0x0");
     }
 
+    /*
+     * @notice Method for executing the proposal
+     */
     function performUpkeep(bytes calldata /*performData*/) external {
         (bool upkeepNeeded, ) = checkUpkeep("");
         require(upkeepNeeded, "Requirements are not fulfilled!");
-        if (
-            proposals[proposalCount].yayVotes >
-            proposals[proposalCount].nayVotes
-        ) {
-            if (proposals[proposalCount].buying == true) {
-                IERC20 token = IERC20(proposals[proposalCount].tokenAddress);
+        proposals[proposalCount].executed = true;
+        Proposal memory proposal = proposals[proposalCount];
+        proposalCount++;
+        currentDeadline = block.timestamp + interval;
+        if (proposal.yayVotes > proposal.nayVotes) {
+            if (proposal.buying == true) {
+                IERC20 token = IERC20(proposal.tokenAddress);
                 uint marketplaceBalance = token.balanceOf(
                     tokenMarketplaceAddresse
                 );
-                if (marketplaceBalance >= proposals[proposalCount].amount) {
+                if (marketplaceBalance >= proposal.amount) {
                     uint price = tokenMarketplace.getPrice(
-                        proposals[proposalCount].tokenAddress
+                        proposal.tokenAddress
                     );
-                    uint cost = proposals[proposalCount].amount * price;
+                    uint cost = proposal.amount * price;
                     if (address(this).balance >= cost) {
                         bool success = tokenMarketplace.buy{value: cost}(
-                            proposals[proposalCount].tokenAddress,
-                            proposals[proposalCount].amount
+                            proposal.tokenAddress,
+                            proposal.amount
                         );
 
                         require(success, "The buy did not work");
                     }
                 }
             } else {
-                uint price = tokenMarketplace.getPrice(
-                    proposals[proposalCount].tokenAddress
-                );
-                uint cost = proposals[proposalCount].amount * price;
+                uint price = tokenMarketplace.getPrice(proposal.tokenAddress);
+                uint cost = proposal.amount * price;
                 uint marketplaceBalance = tokenMarketplaceAddresse.balance;
                 if (marketplaceBalance >= cost) {
-                    IERC20 token = IERC20(
-                        proposals[proposalCount].tokenAddress
-                    );
-                    uint tokenAmount = proposals[proposalCount].amount;
+                    IERC20 token = IERC20(proposal.tokenAddress);
+                    uint tokenAmount = proposal.amount;
                     token.increaseAllowance(
                         tokenMarketplaceAddresse,
                         tokenAmount
                     );
                     bool success = tokenMarketplace.sell(
-                        proposals[proposalCount].tokenAddress,
-                        proposals[proposalCount].amount
+                        proposal.tokenAddress,
+                        proposal.amount
                     );
                     require(success, "The sell did not work!");
                 }
             }
 
-            proposals[proposalCount].executed = true;
+            proposal.executed = true;
         }
         uint requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane,
@@ -232,19 +284,23 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
             i_callbackGasLimit,
             NUM_WORDS
         );
-        uint etfAmount = (address(this).balance * 1) / 100;
-        bool s = tokenMarketplace.buy{value: etfAmount}(
+        uint priceETF = tokenMarketplace.getPrice(etfTokenAddress);
+
+        uint ethAmount = (address(this).balance * 1) / 100;
+        uint etfAmount = ethAmount / priceETF;
+        bool s = tokenMarketplace.buy{value: ethAmount}(
             etfTokenAddress,
             etfAmount
         );
         require(s, "You couldn't buy ETFToken back!");
 
-        proposals[proposalCount].executed = true;
-        proposalCount++;
-        currentDeadline = block.timestamp + interval;
         emit RequestedWinner(requestId);
     }
 
+    /*
+     * @notice Method for getting the winner and sending the prize
+     * @param randomWords Random number to get the random winner
+     */
     function fulfillRandomWords(
         uint256 /* requestId */,
         uint256[] memory randomWords
@@ -259,33 +315,9 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
         emit WinnerPicked(recentWinner);
     }
 
-    /* Modifier */
-
-    modifier onlyTokenHolder() {
-        require(
-            etfToken.balanceOf(msg.sender) >= 0.01 ether,
-            "You need to hold at least 0.01 ETFToken!"
-        );
-        _;
-    }
-
-    modifier proposalOngoing() {
-        require(
-            proposals[proposalCount].deadline >= block.timestamp,
-            "The proposal is still ongoing!"
-        );
-        _;
-    }
-
-    modifier proposalEnded() {
-        require(
-            proposals[proposalCount].deadline < block.timestamp,
-            "The deadline already passed!"
-        );
-        _;
-    }
-
-    /* Getter Functions */
+    //////////////////////
+    // Getter Functions //
+    //////////////////////
 
     function getCurrentProposal() public view returns (Proposal memory) {
         Proposal memory currentProposal = proposals[proposalCount];
@@ -305,6 +337,14 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
 
     function getProposalNum() public view returns (uint) {
         return proposalCount;
+    }
+
+    function getRemainingTime() public view returns (uint) {
+        if (currentDeadline <= block.timestamp) {
+            return 0;
+        }
+        uint time = currentDeadline - block.timestamp;
+        return time;
     }
 
     receive() external payable {}

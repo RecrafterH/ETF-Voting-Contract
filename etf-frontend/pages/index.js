@@ -1,6 +1,4 @@
 import Head from "next/head";
-import Image from "next/image";
-import { Inter, Noto_Sans_Egyptian_Hieroglyphs } from "@next/font/google";
 import styles from "@/styles/Home.module.css";
 import OldProposal from "./OldProposal";
 import {
@@ -10,7 +8,6 @@ import {
   Flex,
   Button,
   Input,
-  Form,
   NumberInput,
   NumberInputField,
   NumberInputStepper,
@@ -25,8 +22,6 @@ import { Contract, ethers } from "ethers";
 import {
   ADDRESS_DUMMYTOKEN,
   ABI_DUMMYTOKEN,
-  ADDRESS_TOKENMARKETPLACE,
-  ABI_TOKENMARKETPLACE,
   ADDRESS_ETFTOKEN,
   ABI_ETFTOKEN,
   ADDRESS_ETFCONTRACT,
@@ -47,6 +42,8 @@ export default function Home() {
   const [searchProposal, setSearchProposal] = useState([]);
   const [recentWinner, setRecentWinner] = useState();
   const [dummyBalance, setDummyBalance] = useState("");
+  const [minutes, setMinutes] = useState();
+  const [seconds, setSeconds] = useState();
   const ref = useRef(null);
   const ref1 = useRef(null);
   const ref2 = useRef(null);
@@ -72,8 +69,8 @@ export default function Home() {
       let amount = document.getElementById("inputAmount").value;
       let func = document.getElementById("inputBuy").value;
       amount = parseEther(amount.toString());
-      console.log(amount.toString());
-      console.log(func);
+      /*       console.log(amount.toString());
+      console.log(func); */
       if (func == "option1") {
         func = true;
       } else if (func == "option2") {
@@ -120,8 +117,9 @@ export default function Home() {
       setCurrentProposal(proposal);
       document.getElementById("currentAddress").innerHTML =
         proposal.tokenAddress;
-      document.getElementById("currentAmount").innerHTML =
-        proposal.amount.toString();
+      document.getElementById("currentAmount").innerHTML = formatEther(
+        proposal.amount.toString()
+      );
       document.getElementById("currentDeadline").innerHTML =
         proposal.deadline.toString();
       document.getElementById("currentYayVotes").innerHTML =
@@ -139,6 +137,12 @@ export default function Home() {
       balance = formatEther(balance.toString());
       balance = await provider.getBalance(ADDRESS_ETFCONTRACT);
       balance = formatEther(balance.toString());
+
+      let time = await etfContract.getRemainingTime();
+      time = Number(time);
+      console.log(time);
+      setMinutes(Math.floor(time / 60));
+      setSeconds(time % 60);
 
       setDummyBalance(balance.toString());
     } catch (error) {
@@ -160,7 +164,6 @@ export default function Home() {
         signer
       );
       const voted = Number(radio);
-
       const tx = await etfContract.voteOnProposal(voted);
       ref4.current.value = "";
       setLoading(true);
@@ -189,7 +192,7 @@ export default function Home() {
       const num = Number(currentNumber) - 1;
       const proposal = await etfContract.getOldProposal(num);
       const tokenAddress = proposal.tokenAddress;
-      const amount = proposal.amount.toString();
+      const amount = formatEther(proposal.amount.toString());
       let buying = proposal.buying;
       if (buying == true) {
         buying = "Buy";
@@ -213,37 +216,44 @@ export default function Home() {
   };
 
   const getSearchProposal = async () => {
-    const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-    await provider.send("eth_requestAccounts", []);
+    try {
+      const provider = new ethers.providers.Web3Provider(
+        window.ethereum,
+        "any"
+      );
+      await provider.send("eth_requestAccounts", []);
 
-    const etfContract = new Contract(
-      ADDRESS_ETFCONTRACT,
-      ABI_ETFCONTRACT,
-      provider
-    );
-    const currentNumber = document.getElementById("searchNumber").value;
-    const num = Number(currentNumber);
-    const proposal = await etfContract.getOldProposal(num);
-    const tokenAddress = proposal.tokenAddress;
-    const amount = proposal.amount.toString();
-    let buying = proposal.buying;
-    if (buying == true) {
-      buying = "Buy";
-    } else {
-      buying = "Sell";
+      const etfContract = new Contract(
+        ADDRESS_ETFCONTRACT,
+        ABI_ETFCONTRACT,
+        provider
+      );
+      const currentNumber = document.getElementById("searchNumber").value;
+      const num = Number(currentNumber);
+      const proposal = await etfContract.getOldProposal(num);
+      const tokenAddress = proposal.tokenAddress;
+      const amount = proposal.amount.toString();
+      let buying = proposal.buying;
+      if (buying == true) {
+        buying = "Buy";
+      } else {
+        buying = "Sell";
+      }
+      const nayVotes = proposal.nayVotes.toString();
+      const yayVotes = proposal.yayVotes.toString();
+
+      const propose = {
+        tokenAddress,
+        amount,
+        buying,
+        nayVotes,
+        yayVotes,
+      };
+      setSearchProposal([propose]);
+      ref3.current.value = "0";
+    } catch (error) {
+      console.error(error);
     }
-    const nayVotes = proposal.nayVotes.toString();
-    const yayVotes = proposal.yayVotes.toString();
-
-    const propose = {
-      tokenAddress,
-      amount,
-      buying,
-      nayVotes,
-      yayVotes,
-    };
-    setSearchProposal([propose]);
-    ref3.current.value = "0";
   };
 
   const getRecentWinner = async () => {
@@ -294,10 +304,14 @@ export default function Home() {
       num = Number(num) + 1;
       const tx = await etfContract.performUpkeep("0x");
       const txReceipt = await tx.wait();
-      console.log(num.toString());
-      console.log(txReceipt.events);
+      /*       console.log(num.toString());
+      console.log(txReceipt.events); */
       //txReceipt.events[4].args.requestId
+      console.log(ADDRESS_ETFCONTRACT);
       await v2AggregatorContract.fulfillRandomWords(num, ADDRESS_ETFCONTRACT);
+      getProposal();
+      getOldProposal();
+      getRecentWinner();
     } catch (error) {
       console.error(error);
     }
@@ -312,7 +326,7 @@ export default function Home() {
   return (
     <Box margin="0" background="linear-gradient(54deg, #758fff, #2f2877)">
       <Head>
-        <title>Homepage ETDDapp</title>
+        <title>Homepage ETFDapp</title>
         <meta name="description" content="Created by Recrafter" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
@@ -369,13 +383,7 @@ export default function Home() {
             </Box>
             <Box margin="30px">
               <label>Token Amount:</label>
-              <NumberInput ref={ref1} id="inputAmount" min={0.0001}>
-                <NumberInputField />
-                <NumberInputStepper>
-                  <NumberIncrementStepper />
-                  <NumberDecrementStepper />
-                </NumberInputStepper>
-              </NumberInput>
+              <Input ref={ref1} id="inputAmount" type="number" min={0.0001} />
             </Box>
             <Box margin="30px">
               <label>Token Amount:</label>
@@ -417,6 +425,10 @@ export default function Home() {
           <Box margin="20px" id="currentYayVotes"></Box>
           <Box margin="20px" id="currentNayVotes"></Box>
           <Box margin="20px" id="currentBuy"></Box>
+          <Box margin="20px">
+            {minutes}:{seconds}
+          </Box>
+
           <Button color="black" onClick={getProposal}>
             Get Proposal
           </Button>

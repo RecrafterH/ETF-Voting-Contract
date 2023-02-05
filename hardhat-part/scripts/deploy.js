@@ -64,7 +64,7 @@ const main = async () => {
     tokenMarketplace.address,
     subscriptionId,
     networkConfig[chainId]["gasLane"],
-    { value: parseEther("100") }
+    { value: parseEther("1000") }
   );
 
   //yarn hardhat verify --contract contracts/ETFContract.sol:ETFContract --network goerli 0x53df2522F47b863Df74Cc6b8A557D873Af2d5b45 "0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D" "0x5cB104D84B8Ccf570C331F2b9C53BD24b7eb4Abd" "0x705E21B25D53C987c71d878d1D241235370E184D" "9083" "0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15"
@@ -73,13 +73,18 @@ const main = async () => {
   await tokenMarketplace.setPrice(etfToken.address, 1);
 
   await etfToken.transfer(
-    "0x2Df3EBe4280dC7262D9644ccd5dBC41c0DE293c8",
-    parseEther("100")
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    parseEther("1000")
   );
 
   await etfToken.transfer(
-    "0xc3974256C8bE7e81E6B3e92e7BC6A28a667b769A",
-    parseEther("100")
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    parseEther("1000")
+  );
+
+  await etfToken.transfer(
+    "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+    parseEther("1000")
   );
 
   await vrfCoordinatorV2Mock.addConsumer(subscriptionId, etfContract.address);
