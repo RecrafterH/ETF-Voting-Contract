@@ -41,7 +41,9 @@ export default function Home() {
   const [oldProposal, setOldProposal] = useState([]);
   const [searchProposal, setSearchProposal] = useState([]);
   const [recentWinner, setRecentWinner] = useState();
-  const [dummyBalance, setDummyBalance] = useState("");
+  const [ethBalance, setEthBalance] = useState("");
+  const [days, setDays] = useState();
+  const [hours, setHours] = useState();
   const [minutes, setMinutes] = useState();
   const [seconds, setSeconds] = useState();
   const ref = useRef(null);
@@ -69,8 +71,6 @@ export default function Home() {
       let amount = document.getElementById("inputAmount").value;
       let func = document.getElementById("inputBuy").value;
       amount = parseEther(amount.toString());
-      /*       console.log(amount.toString());
-      console.log(func); */
       if (func == "option1") {
         func = true;
       } else if (func == "option2") {
@@ -81,7 +81,6 @@ export default function Home() {
         ABI_ETFCONTRACT,
         signer
       );
-      console.log(etfContract.address);
       const tx = await etfContract.addProposal(address, amount, func);
       setLoading(true);
       await tx.wait();
@@ -108,11 +107,6 @@ export default function Home() {
         provider
       );
 
-      const dummyContract = new Contract(
-        ADDRESS_DUMMYTOKEN,
-        ABI_DUMMYTOKEN,
-        provider
-      );
       const proposal = await etfContract.getCurrentProposal();
       setCurrentProposal(proposal);
       document.getElementById("currentAddress").innerHTML =
@@ -132,19 +126,19 @@ export default function Home() {
         document.getElementById("currentBuy").innerHTML = "Selling";
       }
 
-      console.log(ADDRESS_ETFCONTRACT);
-      let balance = await dummyContract.balanceOf(ADDRESS_ETFCONTRACT);
-      balance = formatEther(balance.toString());
-      balance = await provider.getBalance(ADDRESS_ETFCONTRACT);
+      //console.log(ADDRESS_ETFCONTRACT);
+      let balance = await provider.getBalance(ADDRESS_ETFCONTRACT);
       balance = formatEther(balance.toString());
 
       let time = await etfContract.getRemainingTime();
       time = Number(time);
-      console.log(time);
-      setMinutes(Math.floor(time / 60));
+      //console.log(time);
+      setDays(Math.floor(time / 60 / 60 / 24));
+      setHours(Math.floor((time / 60 / 60) % 24));
+      setMinutes(Math.floor((time / 60) % 60));
       setSeconds(time % 60);
 
-      setDummyBalance(balance.toString());
+      setEthBalance(balance.toString());
     } catch (error) {
       console.error(error);
     }
@@ -276,7 +270,7 @@ export default function Home() {
     }
   };
 
-  const performUpkeep = async () => {
+  /*   const performUpkeep = async () => {
     try {
       const provider = new ethers.providers.Web3Provider(
         window.ethereum,
@@ -304,8 +298,6 @@ export default function Home() {
       num = Number(num) + 1;
       const tx = await etfContract.performUpkeep("0x");
       const txReceipt = await tx.wait();
-      /*       console.log(num.toString());
-      console.log(txReceipt.events); */
       //txReceipt.events[4].args.requestId
       console.log(ADDRESS_ETFCONTRACT);
       await v2AggregatorContract.fulfillRandomWords(num, ADDRESS_ETFCONTRACT);
@@ -315,7 +307,7 @@ export default function Home() {
     } catch (error) {
       console.error(error);
     }
-  };
+  }; */
 
   useEffect(() => {
     getProposal();
@@ -407,7 +399,7 @@ export default function Home() {
             >
               Send your Proposal
             </Button>
-            <Text>{dummyBalance}</Text>
+            <Text>ETH Balance: {ethBalance}</Text>
           </Box>
         </Box>
         <Box className={styles.voting}>
@@ -426,7 +418,7 @@ export default function Home() {
           <Box margin="20px" id="currentNayVotes"></Box>
           <Box margin="20px" id="currentBuy"></Box>
           <Box margin="20px">
-            {minutes}:{seconds}
+            {days} days {hours} hours {minutes} minutes {seconds} seconds
           </Box>
 
           <Button color="black" onClick={getProposal}>
@@ -451,14 +443,14 @@ export default function Home() {
           <Button ref={ref4} margin="30px" color="black" onClick={vote}>
             Submit your Vote
           </Button>
-          <Button
+          {/*           <Button
             ref={ref4}
             margin="30px"
             color="black"
             onClick={performUpkeep}
           >
             performUpkeep
-          </Button>
+          </Button> */}
         </Box>
         <Box className={styles.voting}>
           <Text

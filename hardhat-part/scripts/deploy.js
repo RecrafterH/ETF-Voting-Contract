@@ -2,7 +2,7 @@ const { parseEther } = require("ethers/lib/utils");
 const { network, ethers } = require("hardhat");
 const { networkConfig } = require("../helper-hardhat-config");
 
-const FUND_AMOUNT = parseEther("20"); // 1 Ether, or 1e18 (10^18) Wei
+const FUND_AMOUNT = parseEther("20");
 
 const main = async () => {
   const DummyToken = await ethers.getContractFactory("DummyToken");
@@ -10,7 +10,7 @@ const main = async () => {
   await dummyToken.deployed();
   const TokenMarketplace = await ethers.getContractFactory("TokenMarketplace");
   const tokenMarketplace = await TokenMarketplace.deploy({
-    value: parseEther("100"),
+    value: parseEther("0.1"),
   });
 
   await tokenMarketplace.deployed();
@@ -45,7 +45,8 @@ const main = async () => {
     const transactionReceipt = await transactionResponse.wait();
     subscriptionId = transactionReceipt.events[0].args.subId;
     await vrfCoordinatorV2Mock.fundSubscription(subscriptionId, FUND_AMOUNT);
-    console.log("vrfCoordinator: ", vrfCoordinatorV2Mock.address);
+    vrfCoordinatorV2Address = vrfCoordinatorV2Mock.address;
+    console.log("vrfCoordinator: ", vrfCoordinatorV2Address);
   } else {
     vrfCoordinatorV2Address = networkConfig[chainId]["vrfCoordinatorV2"];
     subscriptionId = networkConfig[chainId]["subscriptionId"];
@@ -59,35 +60,18 @@ const main = async () => {
 
   const ETFContract = await ethers.getContractFactory("ETFContract");
   const etfContract = await ETFContract.deploy(
-    vrfCoordinatorV2Mock.address,
+    vrfCoordinatorV2Address,
     etfToken.address,
     tokenMarketplace.address,
     subscriptionId,
     networkConfig[chainId]["gasLane"],
-    { value: parseEther("1000") }
+    { value: parseEther("0.4") }
   );
-
-  //yarn hardhat verify --contract contracts/ETFContract.sol:ETFContract --network goerli 0x53df2522F47b863Df74Cc6b8A557D873Af2d5b45 "0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D" "0x5cB104D84B8Ccf570C331F2b9C53BD24b7eb4Abd" "0x705E21B25D53C987c71d878d1D241235370E184D" "9083" "0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15"
 
   await etfToken.transfer(tokenMarketplace.address, parseEther("10000"));
   await tokenMarketplace.setPrice(etfToken.address, 1);
 
-  await etfToken.transfer(
-    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    parseEther("1000")
-  );
-
-  await etfToken.transfer(
-    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-    parseEther("1000")
-  );
-
-  await etfToken.transfer(
-    "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
-    parseEther("1000")
-  );
-
-  await vrfCoordinatorV2Mock.addConsumer(subscriptionId, etfContract.address);
+  //await vrfCoordinatorV2Mock.addConsumer(subscriptionId, etfContract.address);
 
   console.log("dummyToken deployed at: ", dummyToken.address);
   console.log("tokenmarketplace deployed at: ", tokenMarketplace.address);
@@ -95,10 +79,10 @@ const main = async () => {
   console.log("etfContract deployed at: ", etfContract.address);
 };
 
-//dummyToken deployed at:  0x816a54423C07DDE379fc29fBA721b6942a47eB84
-//tokenmarketplace deployed at:  0x705E21B25D53C987c71d878d1D241235370E184D
-//etfToken deployed at:  0x5cB104D84B8Ccf570C331F2b9C53BD24b7eb4Abd
-//etfContract deployed at:  0x53df2522F47b863Df74Cc6b8A557D873Af2d5b45
+//dummyToken deployed at:  0x03Cd86FF5A93529bd3856FCA29601B6F32b2cD7b
+//tokenmarketplace deployed at:  0x4E20202F43c99A04A3dC997a10ea80055E934071
+//etfToken deployed at:  0x8955e04779473FC5F4825e3248688a2b0649c908
+//etfContract deployed at:  0x061c15819c00DbDCDf1F8abbFDB1989E17222062
 
 main()
   .then(() => process.exit(0))

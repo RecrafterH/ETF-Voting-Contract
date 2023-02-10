@@ -67,7 +67,7 @@ contract ETFContract is VRFConsumerBaseV2, AutomationCompatibleInterface {
 
     address public etfTokenAddress;
     uint public proposalCount;
-    uint public interval = 100;
+    uint public interval = 1 days;
     address public s_recentWinner;
     uint public currentDeadline;
     address public tokenMarketplaceAddresse;

@@ -1,4 +1,4 @@
-export const ADDRESS_DUMMYTOKEN = "0xc351628EB244ec633d5f21fBD6621e1a683B1181";
+export const ADDRESS_DUMMYTOKEN = "0x03Cd86FF5A93529bd3856FCA29601B6F32b2cD7b";
 export const ABI_DUMMYTOKEN = [
   {
     inputs: [],
@@ -277,7 +277,7 @@ export const ABI_DUMMYTOKEN = [
   },
 ];
 export const ADDRESS_TOKENMARKETPLACE =
-  "0xFD471836031dc5108809D173A067e8486B9047A3";
+  "0x4E20202F43c99A04A3dC997a10ea80055E934071";
 export const ABI_TOKENMARKETPLACE = [
   {
     inputs: [],
@@ -463,7 +463,7 @@ export const ABI_TOKENMARKETPLACE = [
     type: "function",
   },
 ];
-export const ADDRESS_ETFTOKEN = "0x5081a39b8A5f0E35a8D959395a630b68B74Dd30f";
+export const ADDRESS_ETFTOKEN = "0x8955e04779473FC5F4825e3248688a2b0649c908";
 export const ABI_ETFTOKEN = [
   {
     inputs: [
@@ -778,7 +778,7 @@ export const ABI_ETFTOKEN = [
     type: "function",
   },
 ];
-export const ADDRESS_ETFCONTRACT = "0x1fA02b2d6A771842690194Cf62D91bdd92BfE28d";
+export const ADDRESS_ETFCONTRACT = "0x061c15819c00DbDCDf1F8abbFDB1989E17222062";
 export const ABI_ETFCONTRACT = [
   {
     inputs: [

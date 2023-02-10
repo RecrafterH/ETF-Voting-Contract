@@ -140,7 +140,7 @@ describe("unit tests TokenMarketplace", () => {
 
 describe("unit tests ETFContract", () => {
   async function deployFixture() {
-    const interval = 300;
+    const interval = 60 * 60 * 24;
 
     const BASE_FEE = "250000000000000000";
     const GAS_PRICE_LINK = 1e9;
